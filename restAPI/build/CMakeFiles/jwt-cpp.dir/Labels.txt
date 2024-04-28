@@ -1,0 +1,13 @@
+# Target labels
+ jwt-cpp
+# Source files and their labels
+/home/misha/CourseProject/restAPI/build/CMakeFiles/jwt-cpp
+/home/misha/CourseProject/restAPI/build/CMakeFiles/jwt-cpp.rule
+/home/misha/CourseProject/restAPI/build/CMakeFiles/jwt-cpp-complete.rule
+/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-install.rule
+/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-mkdir.rule
+/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-download.rule
+/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-update.rule
+/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-patch.rule
+/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-configure.rule
+/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-build.rule

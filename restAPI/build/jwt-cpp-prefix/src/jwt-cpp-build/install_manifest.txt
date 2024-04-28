@@ -1,0 +1,17 @@
+/home/misha/CourseProject/restAPI/build/installdir/cmake/jwt-cpp-targets.cmake
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/base.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/nlohmann-json/traits.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/nlohmann-json/defaults.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/defaults.h.mustache
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/boost-json/traits.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/boost-json/defaults.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/open-source-parsers-jsoncpp/traits.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/open-source-parsers-jsoncpp/defaults.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/danielaparker-jsoncons/traits.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/danielaparker-jsoncons/defaults.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/kazuho-picojson/traits.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/traits/kazuho-picojson/defaults.h
+/home/misha/CourseProject/restAPI/build/installdir/include/jwt-cpp/jwt.h
+/home/misha/CourseProject/restAPI/build/installdir/include/picojson/picojson.h
+/home/misha/CourseProject/restAPI/build/installdir/cmake/jwt-cpp-config.cmake
+/home/misha/CourseProject/restAPI/build/installdir/cmake/jwt-cpp-config-version.cmake

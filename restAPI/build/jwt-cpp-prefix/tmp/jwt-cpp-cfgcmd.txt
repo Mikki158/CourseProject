@@ -1,0 +1,1 @@
+cmd='/usr/bin/cmake;-DSKIP_BUILD_TEST=ON;-DCMAKE_INSTALL_PREFIX=/home/misha/CourseProject/restAPI/build/installdir;-GUnix Makefiles;<SOURCE_DIR><SOURCE_SUBDIR>'

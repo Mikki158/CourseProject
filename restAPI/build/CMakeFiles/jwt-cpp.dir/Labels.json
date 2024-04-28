@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/CMakeFiles/jwt-cpp"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/CMakeFiles/jwt-cpp.rule"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/CMakeFiles/jwt-cpp-complete.rule"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-install.rule"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-mkdir.rule"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-download.rule"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-update.rule"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-patch.rule"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-configure.rule"
+		},
+		{
+			"file" : "/home/misha/CourseProject/restAPI/build/jwt-cpp-prefix/src/jwt-cpp-stamp/jwt-cpp-build.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"jwt-cpp"
+		],
+		"name" : "jwt-cpp"
+	}
+}
