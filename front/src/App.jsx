@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
-import Table from './Table';
+import AuthProvider from './provider/authProvider';
+import Routes from './routes';
 
 function App() {
 
+  const [currentForm, setCurrentForm] = useState('login');
+
+  const toggleForm = (formName) => {
+    setCurrentForm(formName);
+  }
+
   return (
-    <div>
-      <Table/>
-    </div>
-  );
+    <AuthProvider>
+      <Routes />
+    </AuthProvider>
+  )
 }
 
 export default App;

@@ -79,7 +79,7 @@ static bool get_part_value_int_if_present(const crow::multipart::message& multi_
 
 
 
-static bool verify_authorization_header(const crow::request &req, sp::User *user = {})
+static bool verify_authorization_header(const crow::request &req, sp::User *user = new sp::User{})
 {
     const auto &headers_it = req.headers.find("Authorization");
     if(headers_it == req.headers.end())
@@ -122,7 +122,7 @@ static bool verify_authorization_header(const crow::request &req, sp::User *user
         return false;
     }
 
-    CROW_LOG_DEBUG << "Verify 3";
+    CROW_LOG_DEBUG << "Verify 3" << decoded_token.get_payload_claim("chief").as_string();
 
     if(decoded_token.get_payload_claim("chief").as_string() == "true")
         user->chief = true;
@@ -348,43 +348,206 @@ int main()
 
             const crow::query_string &qs = req.url_params;
             //std::optional<std::string> sort_by = std::make_optional(qs.get("sort_by"));
-            std::string date = qs.get("date");
-            //std::string date_end = qs.get("date_end");
+            std::string date_start = qs.get("date_start");
+            std::string date_end = qs.get("date_end");
             std::string groupname = qs.get("groupname");
 
             CROW_LOG_DEBUG << "Get 1";
 
-            auto result = sp::get_shedule_list(date, groupname);
+            auto list = sp::get_shedule_list(date_start, date_end, groupname);
+            if(std::holds_alternative<sp::ErrorCode>(list))
+            {
+                sp::ErrorCode ec = std::get<sp::ErrorCode>(list);
+                return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(ec));
+            }
+
+            CROW_LOG_DEBUG << "Get 2";
+
+            const auto &week = std::get<std::vector<std::vector<sp::Shedule>>>(list);
+            std::vector<crow::json::wvalue> temp;
+            std::vector<crow::json::wvalue> result;
+            std::vector<std::string> days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+            int i = 0;
+            int pair = 1;
+
+            for(const auto &day: week)
+            {
+                pair = 1;
+
+                for(int j = 0; j < 6; j++)
+                {
+                    sp::Shedule shedule;
+                    
+                    if(j < day.size())
+                        shedule = day[j];
+                    else
+                        shedule = {.numberpair = 8};
+
+                    //CROW_LOG_DEBUG << "Shedulr: " << shedule.subjectname;
+                    
+                    while(shedule.numberpair != pair)
+                    {
+                        crow::json::wvalue window{
+                            {"id", ""},
+                            {"subjectname", ""},
+                            {"formatsubject", ""},
+                            {"teacher", ""},
+                            {"groupname", ""},
+                            {"numberpair", pair},
+                            {"date_subject", ""},
+                            {"auditorium", ""}
+                        };
+                        temp.push_back(window);
+                        pair++;
+
+                        if(j >= day.size())
+                            j++;
+
+                        if(pair >= 8)
+                            break;
+                    }
+                    
+                    if(j < day.size())
+                    {
+                        crow::json::wvalue entry{
+                            {"id", shedule.id},
+                            {"subjectname", shedule.subjectname},
+                            {"formatsubject", shedule.formatsubject},
+                            {"teacher", shedule.teacher},
+                            {"groupname", shedule.groupname},
+                            {"numberpair", shedule.numberpair},
+                            {"date_subject", shedule.date_subject},
+                            {"auditorium", shedule.auditorium}
+                        };
+                        temp.push_back(entry);
+                    }
+
+                    pair++;
+                }
+
+                crow::json::wvalue dayjson{{days[i], temp}};
+                result.push_back(dayjson);
+                i++;
+                temp.clear();
+            }
+
+            CROW_LOG_DEBUG << "Get 4";
+
+            return crow::response(crow::status::OK, crow::json::wvalue({result}));
+        });
+
+
+        CROW_ROUTE(app, "/getallsubjectname")
+            .methods(crow::HTTPMethod::GET)([](const crow::request &req){
+
+            //auto result = sp::get_query_list(sp::SelectQuery::subjects, subject);
+            auto result = sp::get_subject_list();
+
             if(std::holds_alternative<sp::ErrorCode>(result))
             {
                 sp::ErrorCode ec = std::get<sp::ErrorCode>(result);
                 return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(ec));
             }
 
-            CROW_LOG_DEBUG << "Get 2";
-
-            const auto &day = std::get<std::vector<sp::Shedule>>(result);
+            const auto &subjects = std::get<std::vector<sp::Subject>>(result);
             std::vector<crow::json::wvalue> temp;
 
-            for(const auto &shedule: day)
+            for(const auto &subject: subjects)
             {
                 crow::json::wvalue entry{
-                    {"id", shedule.id},
-                    {"subjectname", shedule.subjectname},
-                    {"formatsubject", shedule.formatsubject},
-                    {"teacher", shedule.teacher},
-                    {"groupname", shedule.groupname},
-                    {"numberpair", shedule.numberpair},
-                    {"date_subject", shedule.date_subject},
-                    {"auditorium", shedule.auditorium}
+                    {"subjectname", subject.subjectname}
                 };
 
                 temp.push_back(entry);
             }
 
-            CROW_LOG_DEBUG << "Get 4";
+            return crow::response(crow::status::OK, crow::json::wvalue(temp));
+        });
 
-            return crow::response(crow::status::OK, crow::json::wvalue({{"week", temp}}));
+
+        CROW_ROUTE(app, "/getallformat")
+            .methods(crow::HTTPMethod::GET)([](const crow::request &req){
+
+            auto result = sp::get_format_list();
+
+            if(std::holds_alternative<sp::ErrorCode>(result))
+            {
+                sp::ErrorCode ec = std::get<sp::ErrorCode>(result);
+                return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(ec));
+            }
+
+            const auto &formats = std::get<std::vector<sp::Format>>(result);
+            std::vector<crow::json::wvalue> temp;
+
+            for(const auto &format: formats)
+            {
+                crow::json::wvalue entry{
+                    {"formatsubject", format.formatsubject}
+                };
+
+                temp.push_back(entry);
+            }
+
+            return crow::response(crow::status::OK, crow::json::wvalue(temp));
+        });
+
+
+        CROW_ROUTE(app, "/getallteacher")
+            .methods(crow::HTTPMethod::GET)([](const crow::request &req){
+
+            auto result = sp::get_teacher_list();
+
+            if(std::holds_alternative<sp::ErrorCode>(result))
+            {
+                sp::ErrorCode ec = std::get<sp::ErrorCode>(result);
+                return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(ec));
+            }
+
+            const auto &teachers = std::get<std::vector<sp::Teacher>>(result);
+            std::vector<crow::json::wvalue> temp;
+
+            for(const auto &teacher: teachers)
+            {
+                crow::json::wvalue entry{
+                    {"teacherfio", teacher.teacherfio},
+                    {"academic_degree", teacher.academic_degree},
+                    {"category", teacher.category},
+                    {"post", teacher.post},
+                };
+
+                temp.push_back(entry);
+            }
+
+            return crow::response(crow::status::OK, crow::json::wvalue(temp));
+        });
+
+
+        CROW_ROUTE(app, "/getallgroup")
+            .methods(crow::HTTPMethod::GET)([](const crow::request &req){
+
+            auto result = sp::get_group_list();
+
+            if(std::holds_alternative<sp::ErrorCode>(result))
+            {
+                sp::ErrorCode ec = std::get<sp::ErrorCode>(result);
+                return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(ec));
+            }
+
+            const auto &groups = std::get<std::vector<sp::Group>>(result);
+            std::vector<crow::json::wvalue> temp;
+
+            for(const auto &group: groups)
+            {
+                crow::json::wvalue entry{
+                    {"groupname", group.groupname},
+                    {"direction", group.direction},
+                    {"peoplecount", group.peoplecount}
+                };
+
+                temp.push_back(entry);
+            }
+
+            return crow::response(crow::status::OK, crow::json::wvalue(temp));
         });
 
     app.loglevel(crow::LogLevel::Debug);
