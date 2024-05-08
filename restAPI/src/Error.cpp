@@ -10,13 +10,13 @@ namespace sp
             return "OK";
 
         case ErrorCode::USER_NOT_FOUND:
-            return "User not found";
+            return "Пользователь не обнаружен";
 
         case ErrorCode::INTERNAL_ERROR:
             return "Some internal error occured";
 
         case ErrorCode::AUTHENTICATION_ERROR:
-            return "Invalid credentials provided";
+            return "Неверный пароль";
         
         default:
             return "UNKNOWN ERROR";

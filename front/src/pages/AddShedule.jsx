@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react"
 import axios from "axios";
+import { useAuth } from "../provider/authProvider";
+import { Link } from "react-router-dom";
+import { useNotification } from "../Notifications/NotificationProvider";
 
 export const AddShedule = () => {
 
@@ -22,6 +25,12 @@ export const AddShedule = () => {
 
     const [val, setVal] = useState('');
     const data=["one", "two", "three", "four", "five"];
+
+    const [result, setResult] = useState('');
+
+    const {token} = useAuth();
+
+    const dispatch = useNotification();
 
     useEffect(() => {
         axios.get('http://localhost:8080/getallsubjectname')
@@ -48,9 +57,7 @@ export const AddShedule = () => {
 
         console.log("Go");
 
-        const FormData = require('form-data');
-
-        let form = new FormData();
+        const form = new FormData();
         form.append('subjectname', subjectValue);
         form.append('formatsubject', formatValue);
         form.append('teacher', teacherValue);
@@ -58,42 +65,53 @@ export const AddShedule = () => {
         form.append('numberpair', numberValue);
         form.append('date_subject', dateSubject);
 
-        console.log(form);
-
-        console.log(subjectValue);
-        console.log(formatValue);
-        console.log(teacherValue);
-        console.log(groupValue);
-        console.log(numberValue);
-        console.log(dateSubject);
-
-        let config = {
-            Authorization: 'Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXUyJ9.eyJjaGllZiI6InRydWUiLCJleHAiOjE3MTQ3MDMzNzcsImlhdCI6MTcxNDY5OTc3NywiaXNzIjoiU1AiLCJ1c2VybmFtZSI6Im1pc2hhIn0.BczYitTZuh0iAo12HMmzVenb9_Ww5ny6wzLQeic6YhUzn8WRb9LWiFpeSabNIyf7s6_A369nIPLaQ4m1lDG90A'
-            
-        }
-
         axios.post('http://localhost:8080/addshedule', form, {
             headers: {
-                "Authorization": 'Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXUyJ9.eyJjaGllZiI6InRydWUiLCJleHAiOjE3MTQ3MDMzNzcsImlhdCI6MTcxNDY5OTc3NywiaXNzIjoiU1AiLCJ1c2VybmFtZSI6Im1pc2hhIn0.BczYitTZuh0iAo12HMmzVenb9_Ww5ny6wzLQeic6YhUzn8WRb9LWiFpeSabNIyf7s6_A369nIPLaQ4m1lDG90A',
+                "Authorization": 'Bearer ' + token,
                 "content-type": "multipart/form-data",
             }
         })
-            .then(res => console.log(res.data))
-            .catch(err => console.log(err));
+            .then(function(res){
+                console.log("result")
+                console.log(res.data)
+                console.log(res.status)
+
+                dispatch({
+                    type: "SUCCESS",
+                    message: "Занятие успешно добавлено"
+                  })
+            }
+            )
+            .catch(function(error){
+                   if(error.response){
+                    dispatch({
+                        type: "ERROR",
+                        message: error.response.data
+                      })
+                   } else if(error.request){
+                    console.log("request")
+                   } else {
+                    console.log("else")
+                   }
+                }
+                
+            );
     }
 
     return(
         <div>
+            <Link to="/">На главную</Link>
+            <h3>{result}</h3>
             <h2>Добавить пару</h2>
-            <form>
+            <form className="link">
                 <label>
                     Название предмета:
                     <select value={subjectValue} onChange={e=>setSubjectValue(e.target.value)}>
                         {
-                            subjectName.map(opt => <option>{opt.subjectname}</option>)
+                            subjectName.map(opt => <option >{opt.subjectname}</option>)
                         }
                     </select>
-                    <h1>{subjectValue}</h1>
+                    <h3>{subjectValue}</h3>
                 </label>
 
                 <label>
@@ -103,7 +121,7 @@ export const AddShedule = () => {
                             formatSubject.map(opt => <option>{opt.formatsubject}</option>)
                         }
                     </select>
-                    <h1>{formatValue}</h1>
+                    <h3>{formatValue}</h3>
                 </label>
                 
                 <label>
@@ -113,7 +131,7 @@ export const AddShedule = () => {
                             teacher.map(opt => <option>{opt.teacherfio}</option>)
                         }
                     </select>
-                    <h1>{teacherValue}</h1>
+                    <h3>{teacherValue}</h3>
                 </label>
                 
                 <label>
@@ -123,7 +141,7 @@ export const AddShedule = () => {
                             groupName.map(opt => <option>{opt.groupname}</option>)
                         }
                     </select>
-                    <h1>{groupValue}</h1>
+                    <h3>{groupValue}</h3>
                 </label>
 
                 <label>
@@ -133,14 +151,14 @@ export const AddShedule = () => {
                             number.map(opt => <option>{opt}</option>)
                         }
                     </select>
-                    <h1>{numberValue}</h1>
+                    <h3>{numberValue}</h3>
                 </label>
                 
                 
                 
                 <label htmlFor="dateSubject">Дата пары</label>
                 <input value={dateSubject} onChange={(e) => setDateSubject(e.target.value)} type="date" name="dateSubject" id="dateSubject" placeholder="Дата пары"/>
-                <h1>{dateSubject}</h1>
+                <h3>{dateSubject}</h3>
                 <button onClick={addShedule}>
                     Добавить
                 </button>

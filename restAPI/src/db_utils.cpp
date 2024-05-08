@@ -45,7 +45,7 @@ namespace sp
         {
             CROW_LOG_DEBUG << "Details: 3";
             CROW_LOG_ERROR << "Number of rows returned is not equal to 1: " << e.what();
-            return ErrorCode::INTERNAL_ERROR;
+            return ErrorCode::USER_NOT_FOUND;
         }
     }
 
@@ -129,8 +129,7 @@ namespace sp
         try
         {
             auto row = transaction.exec1("SELECT * FROM public.shedule WHERE numberpair = " + transaction.quote(shedule.numberpair) + " AND date_subject = " 
-            + transaction.quote(shedule.date_subject) + 
-            " AND groupname = " + transaction.quote(shedule.groupname));
+            + transaction.quote(shedule.date_subject) + " AND groupname = " + transaction.quote(shedule.groupname));
             transaction.commit();
             
             return Shedule{
@@ -187,7 +186,7 @@ namespace sp
         
     }
 
-    std::variant<std::vector<std::vector<Shedule>>, ErrorCode> get_shedule_list(std::string &date_start, std::string &date_end, std::string &groupname)
+    std::variant<std::vector<Shedule>, ErrorCode> get_shedule_list(std::string &date, std::string &groupname)
     {
         pqxx::connection c("dbname=user user=misha password=123");
 
@@ -196,7 +195,7 @@ namespace sp
         try
         {
             std::stringstream s;
-            s << "SELECT * FROM shedule WHERE date_subject >= " << transaction.quote(date_start) << " AND date_subject <=" << transaction.quote(date_end)
+            s << "SELECT * FROM shedule WHERE date_subject = " << transaction.quote(date)
             << " AND groupname = " << transaction.quote(groupname) << " ORDER BY date_subject asc, numberpair asc;";
 
             std::string query = s.str();
@@ -206,9 +205,6 @@ namespace sp
             transaction.commit();
 
             std::vector<Shedule> day;
-            std::vector<std::vector<Shedule>> shedules;
-
-            std::string date = result[0]["date_subject"].c_str();
 
             for(size_t i = 0; i < result.size(); i++)
             {
@@ -225,19 +221,10 @@ namespace sp
                     .auditorium = row["auditorium"].c_str()
                 };
 
-                if(shedule.date_subject != date)
-                {
-                    date = shedule.date_subject;
-                    shedules.push_back(day);
-                    day.clear();
-                }
-
                 day.push_back(shedule);                
             }
 
-            shedules.push_back(day);
-
-            return shedules;
+            return day;
         }
         catch(const pqxx::sql_error &e)
         {
@@ -247,108 +234,6 @@ namespace sp
         
     }
     
-    template <class T>
-    std::variant<std::vector<T>, ErrorCode> get_query_list(SelectQuery query, T value)
-    {
-        pqxx::connection c("dbname=user user=misha password=123");
-
-        pqxx::read_transaction transaction(c);
-
-        try
-        {
-            std::stringstream s;
-
-            s << "SELECT * FROM ";
-
-            switch (query)
-            {
-            case SelectQuery::subjects:
-                s << "subjects";
-                break;
-
-            case SelectQuery::formats:
-                s << "formats";
-                break;
-
-            case SelectQuery::teachers:
-                s << "teachers";
-                break;
-
-            case SelectQuery::groups:
-                s << "groups";
-                break;
-            
-            default:
-                break;
-            }
-
-            std::string query = s.str();
-            CROW_LOG_DEBUG << "Query: " << query;
-
-            auto resultquery = transaction.exec(query);
-            transaction.commit();
-
-            std::vector<T> result;
-
-            for(size_t i = 0; i < resultquery.size(); i++)
-            {
-                auto row = resultquery[i];
-
-                switch (resultquery)
-                {
-                case SelectQuery::subjects:
-                    Subject subject {
-                        .subjectname = row["subjectname"].c_str(),
-                        .auditorium = row["auditorium"].c_str()
-                    };
-
-                    result.push_back(subject);
-                    break;
-
-                case SelectQuery::formats:
-                    Format format {
-                        .formatsubject = row["formatsubject"].c_str()
-                    };
-
-                    result.push_back(format);
-                    break;
-
-                case SelectQuery::teachers:
-                    Teacher teacher {
-                        .teacherfio = row["teacherfio"].c_str(),
-                        .academic_degree = row["academic_degree"].c_str(),
-                        .category = row["category"].c_str(),
-                        .post = row["post"].c_str()
-                    };
-
-                    result.push_back(teacher);
-                    break;
-
-                case SelectQuery::groups:
-                    Group group {
-                        .groupname = row["groupname"].c_str(),
-                        .direction = row["direction"].c_str(),
-                        .peoplecount = std::stoi(row["peoplecount"].c_str())
-                    };
-
-                    result.push_back(group);
-                    break;
-                
-                default:
-                    break;
-                }
-            }
-
-            return result;
-            
-        }
-        catch(const std::exception& e)
-        {
-            CROW_LOG_ERROR << "Internal exception was throw: " << e.what();
-            return ErrorCode::INTERNAL_ERROR;
-        }
-        
-    }
 
     std::variant<std::vector<Subject>, ErrorCode> get_subject_list()
     {
@@ -516,5 +401,196 @@ namespace sp
             CROW_LOG_ERROR << "Internal exception was throw: " << e.what();
             return ErrorCode::INTERNAL_ERROR;
         }
+    }
+
+    std::variant<Subject, bool> availability_subject(const Subject &subject)
+    {
+        pqxx::connection c("dbname=user user=misha password=123");
+
+        pqxx::read_transaction transaction(c);
+
+        try
+        {
+            auto row = transaction.exec1("SELECT * FROM public.subjects WHERE subjectname = " + transaction.quote(subject.subjectname) + " AND auditorium = "
+            + transaction.quote(subject.auditorium));
+            transaction.commit();
+
+            return Subject{
+                .subjectname = row["subjectname"].c_str(),
+                .auditorium = row["auditorium"].c_str()
+            };
+        }
+        catch(const pqxx::unexpected_rows &e)
+        {
+            return true;
+        }
+    }
+
+    bool add_subject(const Subject &subject)
+    {
+        pqxx::connection c("dbname=user user=misha password=123");
+
+        pqxx::work transaction(c);
+
+        try
+        {
+            std::stringstream s;
+
+            s << "INSERT INTO public.subjects (subjectname, auditorium) "
+                "VALUES ("
+                << transaction.quote(subject.subjectname) << ','
+                << transaction.quote(subject.auditorium) << ')';
+
+            auto result = transaction.exec(s.str());
+
+            CROW_LOG_DEBUG << s.str();
+
+            if(result.affected_rows() != 1)
+            {
+                CROW_LOG_ERROR << "Something went wrong - couldn`t insert data into database table";
+                return false;
+            }
+
+            transaction.commit();
+            return true;
+        }
+        catch(const std::exception& e)
+        {
+            CROW_LOG_ERROR << "Interval exception was thrown: " << e.what();
+            return false;
+        }
+        
+    }
+
+    std::optional<Teacher> availability_teacher(const Teacher &teacher)
+    {
+        pqxx::connection c("dbname=user user=misha password=123");
+
+        pqxx::read_transaction transaction(c);
+
+        try
+        {
+            auto row = transaction.exec1("SELECT * FROM public.teachers WHERE teacherfio = " + transaction.quote(teacher.teacherfio));
+            transaction.commit();
+
+            return Teacher{
+                .teacherfio = row["teacherfio"].c_str(),
+                .academic_degree = row["academic_degree"].c_str(),
+                .category = row["category"].c_str(),
+                .post = row["post"].c_str()
+            };
+        }
+        catch(const std::exception& e)
+        {
+            return std::nullopt;
+        }
+        
+    }
+
+    bool add_teacher(const Teacher &teacher)
+    {
+        pqxx::connection c("dbname=user user=misha password=123");
+
+        pqxx::work transaction(c);
+
+        try
+        {
+            std::stringstream s;
+
+            s << "INSERT INTO public.teachers (teacherfio, academic_degree, category, post) "
+            "VALUES ( "
+            << transaction.quote(teacher.teacherfio) << ','
+            << transaction.quote(teacher.academic_degree) << ','
+            << transaction.quote(teacher.category) << ','
+            << transaction.quote(teacher.post) << ')';
+
+            auto result = transaction.exec(s.str());
+
+            if(result.affected_rows() != 1)
+            {
+                CROW_LOG_DEBUG << "Something went wrong - couldn`t insert data into database table";
+                return false;
+            }
+
+            transaction.commit();
+            return true;
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+        }
+        
+    }
+
+    std::optional<Group> availability_group(const Group &group)
+    {
+        pqxx::connection c("dbname=user user=misha password=123");
+
+        pqxx::read_transaction transaction(c);
+
+        try
+        {
+            auto row = transaction.exec1("SELECT * FROM public.groups WHERE groupname = " + transaction.quote(group.groupname));
+            transaction.commit();
+
+            return Group{
+                .groupname =row["groupname"].c_str(),
+                .direction = row["direction"].c_str(),
+                .peoplecount = std::stoi(row["people_count"].c_str())
+            };
+        }
+        catch(const std::exception& e)
+        {
+            return std::nullopt;
+        }        
+    }
+
+    bool add_group(const Group &group)
+    {
+        pqxx::connection c("dbname=user user=misha password=123");
+
+        pqxx::work transaction(c);
+
+        std::stringstream s;
+
+        s << "INSERT INTO public.groups (groupname, direction, people_count) "
+            "VALUES ("
+            << transaction.quote(group.groupname) << ','
+            << transaction.quote(group.direction) << ','
+            << transaction.quote(group.peoplecount) << ')';
+
+        auto result = transaction.exec(s.str());
+
+        if(result.affected_rows() != 1)
+        {
+            CROW_LOG_DEBUG << "Something went wrong - couldn`t insert data into database table";
+            return false;
+        }
+
+        transaction.commit();
+        return true;
+    }
+
+    bool delete_shedule(const Shedule &shedule)
+    {
+        pqxx::connection c("dbname=user user=misha password=123");
+
+        pqxx::work transaction(c);
+
+        std::stringstream s;
+
+        s << "DELETE FROM public.shedule WHERE date_subject = " << transaction.quote(shedule.date_subject) << " AND numberpair = " << transaction.quote(shedule.numberpair)
+            << " AND groupname = " << transaction.quote(shedule.groupname);
+
+        auto result = transaction.exec(s.str());
+
+        if(result.affected_rows() != 1)
+        {
+            CROW_LOG_DEBUG << "Something went wrong - couldn`t insert data into database table";
+            return false;
+        }
+
+        transaction.commit();
+        return true;
     }
 }

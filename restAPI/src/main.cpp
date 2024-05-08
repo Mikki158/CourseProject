@@ -10,6 +10,9 @@
 #include "crow/middlewares/cors.h"
 #include <pqxx/pqxx>
 #include <jwt-cpp/jwt.h>
+#include <ctime>
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/lexical_cast.hpp>
 
 struct RequestLogger
 {
@@ -150,7 +153,7 @@ int main()
         .global()
             .methods("POST"_method, "GET"_method)
         .prefix("/")
-            .origin("http://localhost:3000")
+            .origin("http://localhost:5173")
             .allow_credentials();
     
 
@@ -295,27 +298,27 @@ int main()
 
             if(!get_part_value_string_if_present(multi_part_message, "subjectname", shedule.subjectname))
             {
-                return crow::response(crow::status::BAD_REQUEST, "Required part 'subjectname' is missing or empty");
+                return crow::response(crow::status::BAD_REQUEST, "Название предмета отсутствует");
             }
             if(!get_part_value_string_if_present(multi_part_message, "formatsubject", shedule.formatsubject))
             {
-                return crow::response(crow::status::BAD_REQUEST, "Required part 'formatsubject' is missing or empty");
+                return crow::response(crow::status::BAD_REQUEST, "Тип предмета отсутствует");
             }
             if(!get_part_value_string_if_present(multi_part_message, "teacher", shedule.teacher))
             {
-                return crow::response(crow::status::BAD_REQUEST, "Required part 'teacher' is missing or empty");
+                return crow::response(crow::status::BAD_REQUEST, "Преподаватель предмета отсутствует");
             }
             if(!get_part_value_string_if_present(multi_part_message, "groupname", shedule.groupname))
             {
-                return crow::response(crow::status::BAD_REQUEST, "Required part 'groupname' is missing or empty");
+                return crow::response(crow::status::BAD_REQUEST, "Номер группы отсутствует");
             }
             if(!get_part_value_int_if_present(multi_part_message, "numberpair", shedule.numberpair))
             {
-                return crow::response(crow::status::BAD_REQUEST, "Required part 'numberpair' is missing or empty");
+                return crow::response(crow::status::BAD_REQUEST, "Номер пары отсутствует");
             }
             if(!get_part_value_string_if_present(multi_part_message, "date_subject", shedule.date_subject))
             {
-                return crow::response(crow::status::BAD_REQUEST, "Required part 'date_subject' is missing or empty");
+                return crow::response(crow::status::BAD_REQUEST, "Дата пары отсутствует");
             }
 
             auto result = sp::couple_available(shedule);
@@ -341,55 +344,76 @@ int main()
         CROW_ROUTE(app, "/getallshedule")
             .methods(crow::HTTPMethod::GET)([](const crow::request &req){
             
-            //if(!verify_authorization_header(req))
-            //{
-            //    return crow::response(crow::status::UNAUTHORIZED, sp::error_str(sp::ErrorCode::AUTHENTICATION_ERROR));
-            //}
-
             const crow::query_string &qs = req.url_params;
-            //std::optional<std::string> sort_by = std::make_optional(qs.get("sort_by"));
+
             std::string date_start = qs.get("date_start");
-            std::string date_end = qs.get("date_end");
             std::string groupname = qs.get("groupname");
 
-            CROW_LOG_DEBUG << "Get 1";
-
-            auto list = sp::get_shedule_list(date_start, date_end, groupname);
-            if(std::holds_alternative<sp::ErrorCode>(list))
-            {
-                sp::ErrorCode ec = std::get<sp::ErrorCode>(list);
-                return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(ec));
-            }
-
-            CROW_LOG_DEBUG << "Get 2";
-
-            const auto &week = std::get<std::vector<std::vector<sp::Shedule>>>(list);
-            std::vector<crow::json::wvalue> temp;
+            boost::gregorian::date start(std::stoi(date_start.substr(0, 4)), std::stoi(date_start.substr(5, 2)), std::stoi(date_start.substr(8, 2)));
+            int pair;
             std::vector<crow::json::wvalue> result;
+            std::vector<crow::json::wvalue> temp;
             std::vector<std::string> days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-            int i = 0;
-            int pair = 1;
 
-            for(const auto &day: week)
+            for(int i = 0; i < 6; i++)
             {
                 pair = 1;
+
+                std::string current_day = boost::lexical_cast<std::string>(start);
+
+                std::string months = current_day.substr(5, 3);
+
+                if(months == "Jan")
+                    current_day.replace(5, 4, "01-");
+                else if(months == "Feb")
+                    current_day.replace(5, 4, "02-");
+                else if(months == "Mar")
+                    current_day.replace(5, 4, "03-");
+                else if(months == "Apr")
+                    current_day.replace(5, 4, "04-");
+                else if(months == "May")
+                    current_day.replace(5, 4, "05-");
+                else if(months == "Jun")
+                    current_day.replace(5, 4, "06-");
+                else if(months == "Jul")
+                    current_day.replace(5, 4, "07-");
+                else if(months == "Aug")
+                    current_day.replace(5, 4, "08-");
+                else if(months == "Sep")
+                    current_day.replace(5, 4, "09-");
+                else if(months == "Oct")
+                    current_day.replace(5, 4, "10-");
+                else if(months == "Nov")
+                    current_day.replace(5, 4, "11-");
+                else if(months == "Dec")
+                    current_day.replace(5, 4, "12-");
+
+                auto list = sp::get_shedule_list(current_day, groupname);
+
+                if(std::holds_alternative<sp::ErrorCode>(list))
+                {
+                    sp::ErrorCode ec = std::get<sp::ErrorCode>(list);
+                    return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(ec));
+                }
+
+                const auto &day = std::get<std::vector<sp::Shedule>>(list);
 
                 for(int j = 0; j < 6; j++)
                 {
                     sp::Shedule shedule;
-                    
+
                     if(j < day.size())
                         shedule = day[j];
                     else
                         shedule = {.numberpair = 8};
 
-                    //CROW_LOG_DEBUG << "Shedulr: " << shedule.subjectname;
-                    
                     while(shedule.numberpair != pair)
                     {
+                        if(pair >= 8)
+                            pair = 7;
                         crow::json::wvalue window{
                             {"id", ""},
-                            {"subjectname", ""},
+                            {"subjectname", "***"},
                             {"formatsubject", ""},
                             {"teacher", ""},
                             {"groupname", ""},
@@ -397,6 +421,7 @@ int main()
                             {"date_subject", ""},
                             {"auditorium", ""}
                         };
+
                         temp.push_back(window);
                         pair++;
 
@@ -406,7 +431,7 @@ int main()
                         if(pair >= 8)
                             break;
                     }
-                    
+
                     if(j < day.size())
                     {
                         crow::json::wvalue entry{
@@ -427,13 +452,12 @@ int main()
 
                 crow::json::wvalue dayjson{{days[i], temp}};
                 result.push_back(dayjson);
-                i++;
                 temp.clear();
+                start += boost::gregorian::days(1);
             }
 
-            CROW_LOG_DEBUG << "Get 4";
-
             return crow::response(crow::status::OK, crow::json::wvalue({result}));
+
         });
 
 
@@ -549,6 +573,201 @@ int main()
 
             return crow::response(crow::status::OK, crow::json::wvalue(temp));
         });
+
+        CROW_ROUTE(app, "/adddata")
+            .methods(crow::HTTPMethod::POST)([](const crow::request &req){
+            
+            sp::User user;
+
+            CROW_LOG_DEBUG << "ADD 1";
+
+            if(!verify_authorization_header(req, &user))
+            {
+                return crow::response(crow::status::UNAUTHORIZED, sp::error_str(sp::ErrorCode::AUTHENTICATION_ERROR));
+            }
+            if(!user.chief)
+            {
+                return crow::response(crow::status::UNAUTHORIZED, "У вас нет прав на добавление этих данных");
+            }
+
+            CROW_LOG_DEBUG << "ADD 2";
+
+            crow::multipart::message multi_part_message(req);
+
+            auto data = multi_part_message.part_map.find("data");
+
+            CROW_LOG_DEBUG << data->second.body;
+
+            if(data->second.body == "subject")
+            {
+                sp::Subject subject;
+
+                if(!get_part_value_string_if_present(multi_part_message, "subjectname", subject.subjectname))
+                {
+                    return crow::response(crow::status::BAD_REQUEST, "Название предмета отсутствует");
+                }
+                if(!get_part_value_string_if_present(multi_part_message, "auditorium", subject.auditorium))
+                {
+                    return crow::response(crow::status::BAD_REQUEST, "Номер аудитории отсутствует");
+                }
+
+                CROW_LOG_DEBUG << "ADD 3";
+
+                auto result = sp::availability_subject(subject);
+
+                if(std::holds_alternative<sp::Subject>(result))
+                {
+                    const auto &oldsubject = std::get<sp::Subject>(result);
+                    std::stringstream s;
+
+                    s << "Предмет " << oldsubject.subjectname << " проводимый в аудитории " << oldsubject.auditorium << " уже есть в базе";
+
+                    return crow::response(crow::status::BAD_REQUEST, s.str());
+                }
+
+                CROW_LOG_DEBUG << "ADD 4";
+
+                if(!sp::add_subject(subject))
+                {
+                    return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(sp::ErrorCode::INTERNAL_ERROR));
+                }
+
+                CROW_LOG_DEBUG << "ADD 5";
+
+                return crow::response(crow::status::OK);
+            }
+            else if(data->second.body == "teacher")
+            {
+                CROW_LOG_DEBUG << "ADD teacher 5";
+
+                sp::Teacher teacher;
+
+                if(!get_part_value_string_if_present(multi_part_message, "teacherfio", teacher.teacherfio))
+                {
+                    return crow::response(crow::status::BAD_REQUEST, "ФИО преподавателя отсутствует");
+                }
+                if(!get_part_value_string_if_present(multi_part_message, "academic_degree", teacher.academic_degree))
+                {
+                    teacher.academic_degree = '-';
+                }
+                if(!get_part_value_string_if_present(multi_part_message, "category", teacher.category))
+                {
+                    teacher.category = '-';
+                }
+                if(!get_part_value_string_if_present(multi_part_message, "post", teacher.post))
+                {
+                    return crow::response(crow::status::BAD_REQUEST, "Должность преподавателя отсутствует");
+                }
+
+                auto result = sp::availability_teacher(teacher);
+
+                if(result)
+                {
+                    const auto &oldteacher = *result;
+
+                    std::stringstream s;
+
+                    s << "Преподаватель " << oldteacher.teacherfio << " уже есть в базе";
+
+                    return crow::response(crow::status::BAD_REQUEST, s.str());
+                }
+
+                if(!sp::add_teacher(teacher))
+                {
+                    return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(sp::ErrorCode::INTERNAL_ERROR));
+                }
+                
+                return crow::response(crow::status::OK);
+            }
+            else if(data->second.body == "group")
+            {
+                sp::Group group;
+
+                if(!get_part_value_string_if_present(multi_part_message, "groupname", group.groupname))
+                {
+                    return crow::response(crow::status::BAD_REQUEST, "Номер группы отсутствует");
+                }
+                if(!get_part_value_string_if_present(multi_part_message, "direction", group.direction))
+                {
+                    return crow::response(crow::status::BAD_REQUEST, "Направление группы отсутствует");
+                }
+                if(!get_part_value_int_if_present(multi_part_message, "peoplecount", group.peoplecount))
+                {
+                    return crow::response(crow::status::BAD_REQUEST, "Количество людей в группе отсутствует");
+                }
+
+                auto result = sp::availability_group(group);
+
+                if(result)
+                {
+                    const auto &oldgroup = *result;
+
+                    std::stringstream s;
+
+                    s << "Группа " << oldgroup.groupname << " напрваления " << oldgroup.direction << " уже есть в базе"; 
+                
+                    return crow::response(crow::status::BAD_REQUEST, s.str());
+                }
+
+                if(!sp::add_group(group))
+                {
+                    return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(sp::ErrorCode::INTERNAL_ERROR));
+                }
+
+                return crow::response(crow::status::OK);
+            }
+    });
+
+    CROW_ROUTE(app, "/deleteshedule")
+        .methods(crow::HTTPMethod::POST)([](const crow::request &req)
+        {
+            crow::multipart::message multi_part_message(req);
+
+            sp::Shedule shedule;
+
+            CROW_LOG_DEBUG << "DELETE 1";
+
+            if(!get_part_value_string_if_present(multi_part_message, "date_subject", shedule.date_subject))
+            {
+                return crow::response(crow::status::BAD_REQUEST, "Дата пары отсутствует");
+            }
+
+            CROW_LOG_DEBUG << "DELETE 2";
+
+            if(!get_part_value_int_if_present(multi_part_message, "numberpair", shedule.numberpair))
+            {
+                return crow::response(crow::status::BAD_REQUEST, "Номер пары отсутствует");
+            }
+
+            CROW_LOG_DEBUG << "DELETE 3";
+
+            if(!get_part_value_string_if_present(multi_part_message, "groupname", shedule.groupname))
+            {
+                return crow::response(crow::status::BAD_REQUEST, "Номер группы отсутствует");
+            }
+
+            CROW_LOG_DEBUG << "DELETE 4";
+
+            auto result = sp::couple_available(shedule);
+
+            CROW_LOG_DEBUG << "DELETE 5";
+
+            if(!std::holds_alternative<sp::Shedule>(result))
+            {
+                return crow::response(crow::status::BAD_REQUEST, "Такой пары нет");
+            }
+
+            if(!sp::delete_shedule(shedule))
+            {
+                return crow::response(crow::status::INTERNAL_SERVER_ERROR, sp::error_str(sp::ErrorCode::INTERNAL_ERROR));
+            }
+
+            CROW_LOG_DEBUG << "DELETE 6";
+
+            return crow::response(crow::status::OK);
+    });
+
+
 
     app.loglevel(crow::LogLevel::Debug);
 
